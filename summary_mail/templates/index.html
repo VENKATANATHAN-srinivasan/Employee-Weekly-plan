@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Weekly Summary Uploader</title>
+  <style>
+    body{font-family:Arial;margin:24px;background:#f6f8fb;color:#0f172a}
+    .card{max-width:620px;margin:auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 8px 24px rgba(2,6,23,.06)}
+    label{font-weight:700;display:block;margin-top:12px}
+    input[type="email"],input[type="file"]{width:100%;padding:10px;border:1px solid #e6eefb;border-radius:8px;margin-top:8px}
+    button{margin-top:16px;padding:12px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}
+    .msg{margin-top:12px;font-weight:700}
+    pre{background:#f8fafc;padding:10px;border-radius:8px;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Send Weekly Summary Report</h2>
+    <form id="form">
+      <label>Recipient email</label>
+      <input id="receiver_email" name="receiver_email" type="email" placeholder="recipient@example.com" required>
+      <label>Upload Excel (.xlsx only)</label>
+      <input id="file" name="file" type="file" accept=".xlsx" required>
+      <button type="submit">Send Report</button>
+    </form>
+    <div id="msg" class="msg"></div>
+    <div id="debug"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const msg = document.getElementById("msg");
+    const debug = document.getElementById("debug");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      msg.textContent = ""; debug.innerHTML = "";
+      const email = document.getElementById("receiver_email").value.trim();
+      const fileEl = document.getElementById("file");
+
+      if(!fileEl.files.length) { msg.textContent="Select an .xlsx file"; msg.style.color="red"; return; }
+      const file = fileEl.files[0];
+      if(!file.name.toLowerCase().endsWith(".xlsx")) { msg.textContent="Only .xlsx files allowed"; msg.style.color="red"; return; }
+
+      const fd = new FormData();
+      fd.append("receiver_email", email);
+      fd.append("file", file);
+
+      msg.textContent = "Sending..."; msg.style.color="black";
+      try {
+        const res = await fetch("http://127.0.0.1:5000/upload_timesheet", { method: "POST", body: fd });
+        const data = await res.json();
+        if(res.ok) {
+          msg.textContent = `${data.message} (Current: ${data.current_week_range}, Next: ${data.next_week_range})`;
+          msg.style.color = "green";
+          if(data.parsed_sample) {
+            debug.innerHTML = "<h4>Date parse sample (first 8 rows)</h4><pre>" + JSON.stringify(data.parsed_sample, null, 2) + "</pre>";
+          }
+        } else {
+          msg.textContent = data.error || "Server error";
+          msg.style.color = "red";
+          if(data.parsed_sample) {
+            debug.innerHTML = "<h4>Parse sample</h4><pre>" + JSON.stringify(data.parsed_sample, null, 2) + "</pre>";
+          }
+        }
+      } catch (err) {
+        msg.textContent = "Network error: " + err.message; msg.style.color = "red";
+      }
+    });
+  </script>
+</body>
+</html>
