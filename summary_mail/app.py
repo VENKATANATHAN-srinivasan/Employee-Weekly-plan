@@ -11,16 +11,17 @@ from flask_cors import CORS
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # ---------- SMTP config ----------
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "venkatanathansrinivasan1@gmail.com")   # <-- set
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "sjvcsnpxllssnvnl")      # <-- set
-EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USERNAME)
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+EMAIL_FROM = os.getenv("EMAIL_FROM", SMTP_USERNAME)
 # ----------------------------------
 
 # ---------- helper: column detection ----------
@@ -94,11 +95,7 @@ def normalize_schema(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ---------- robust date parsing ----------
-FMT_PRIORITY = [
-    "%m-%d-%Y", "%m/%d/%Y",   # mm-dd / mm/dd
-    "%d-%m-%Y", "%d/%m/%Y",   # dd-mm / dd/mm
-    "%Y-%m-%d", "%Y/%m/%d"    # iso
-]
+
 
 def parse_any_date(val):
     """Robust parse for datetimes, Excel serials, and many string formats."""
@@ -120,18 +117,7 @@ def parse_any_date(val):
     if not s:
         return pd.NaT
 
-    # Try priority formats first
-    for fmt in FMT_PRIORITY:
-        try:
-            dt = datetime.strptime(s, fmt)
-            return pd.Timestamp(dt.date())
-        except Exception:
-            # try with normalized separator
-            try:
-                dt = datetime.strptime(s.replace("/", "-"), fmt)
-                return pd.Timestamp(dt.date())
-            except Exception:
-                pass
+    
 
     # Try pandas parse with month-first, then day-first
     dt = pd.to_datetime(s, errors="coerce", dayfirst=False, infer_datetime_format=True)
@@ -261,15 +247,10 @@ def upload_timesheet():
         # parse dates robustly
         parsed = df["Date"].apply(parse_any_date)
         # build parsed sample for debug
-        parsed_sample = []
-        for idx, row in df.head(8).iterrows():
-            parsed_sample.append({
-                "orig": row["Date"],
-                "parsed": str(parsed.iloc[idx])  # may be NaT
-            })
+       
 
         if parsed.isna().all():
-            return jsonify({"error":"No parsable dates found in 'Date' column","parsed_sample": parsed_sample}), 400
+            return jsonify({"error":"No parsable dates found in 'Date' column"}), 400
 
         df["Date_parsed"] = parsed
         df["Date_only"] = df["Date_parsed"].dt.date
@@ -307,8 +288,7 @@ def upload_timesheet():
             "current_week_range": f"{start_c} to {end_c}",
             "next_week_range": f"{start_n} to {end_n}",
             "current_rows": int(len(cur_stats)),
-            "next_rows": int(len(nxt_plan)),
-            "parsed_sample": parsed_sample
+            "next_rows": int(len(nxt_plan))
         }), 200
 
     except Exception as e:
@@ -319,3 +299,15 @@ def home():
 if __name__ == "__main__":
     # pip install flask flask-cors pandas numpy openpyxl
     app.run(port=5000, debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
