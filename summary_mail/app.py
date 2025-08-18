@@ -1,4 +1,3 @@
-
 import io
 import os
 from datetime import datetime, timedelta, date
@@ -95,8 +94,6 @@ def normalize_schema(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ---------- robust date parsing ----------
-
-
 def parse_any_date(val):
     """Robust parse for datetimes, Excel serials, and many string formats."""
     if pd.isna(val):
@@ -116,8 +113,6 @@ def parse_any_date(val):
     s = str(val).strip()
     if not s:
         return pd.NaT
-
-    
 
     # Try pandas parse with month-first, then day-first
     dt = pd.to_datetime(s, errors="coerce", dayfirst=False, infer_datetime_format=True)
@@ -231,23 +226,13 @@ def upload_timesheet():
         if not receiver or not file:
             return jsonify({"error":"receiver_email and .xlsx file required"}), 400
 
-        # Load xlsx as strings to avoid pandas auto-parsing mistakes
-        df_raw = load_xlsx_only = None
-        try:
-            # read raw with dtype=str so we can handle many formats
-            data = io.BytesIO(file.read())
-            df_raw = pd.read_excel(data, sheet_name=0, dtype=str)
-        except Exception:
-            # fallback: try normal read
-            data = io.BytesIO(file.read())
-            df_raw = pd.read_excel(data, sheet_name=0)
+        #  Use helper load_xlsx()
+        df_raw = load_xlsx(file)
 
         df = normalize_schema(df_raw)
 
         # parse dates robustly
         parsed = df["Date"].apply(parse_any_date)
-        # build parsed sample for debug
-       
 
         if parsed.isna().all():
             return jsonify({"error":"No parsable dates found in 'Date' column"}), 400
@@ -293,9 +278,11 @@ def upload_timesheet():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 @app.route("/")
 def home():
     return render_template("index.html") 
+
 if __name__ == "__main__":
     # pip install flask flask-cors pandas numpy openpyxl
     app.run(port=5000, debug=True)
