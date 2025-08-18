@@ -1,4 +1,4 @@
-# app.py
+
 import io
 import os
 from datetime import datetime, timedelta, date
@@ -46,9 +46,9 @@ def normalize_schema(df: pd.DataFrame) -> pd.DataFrame:
     sub = find_col(cols, ["sub-category", "subcategory", "sub category", "subcat"])
     line = find_col(cols, ["line item", "line_item", "lineitem", "task", "activity", "li"])
 
-    if cat and cat != "Date": df = df.rename(columns={cat: "Category"})
-    if sub and sub != "Date": df = df.rename(columns={sub: "Subcategory"})
-    if line and line != "Date": df = df.rename(columns={line: "Line Item"})
+    if cat : df = df.rename(columns={cat: "Category"})
+    if sub : df = df.rename(columns={sub: "Subcategory"})
+    if line: df = df.rename(columns={line: "Line Item"})
 
     # Planned/Actual LI
     planned_li = find_col(cols, ["planned li", "planned line", "planned items", "planned count", "planned"])
@@ -299,15 +299,3 @@ def home():
 if __name__ == "__main__":
     # pip install flask flask-cors pandas numpy openpyxl
     app.run(port=5000, debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
